@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek-OCR 文档识别</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 8px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-area {
+            margin-top: 20px;
+        }
+
+        .result-text {
+            width: 100%;
+            min-height: 300px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            resize: vertical;
+            background: #f9f9f9;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .status-success {
+            background: #e8f5e9;
+            color: #388e3c;
+            border: 1px solid #c8e6c9;
+        }
+
+        .status-error {
+            background: #ffebee;
+            color: #d32f2f;
+            border: 1px solid #ffcdd2;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .result-container {
+            position: relative;
+        }
+
+        .model-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .status-ready {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status-loading {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .status-error {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 DeepSeek-OCR 文档识别</h1>
+            <p>基于 DeepSeek-OCR-2 的高质量文档识别</p>
+            <div style="margin-top: 15px;">
+                <span id="modelStatus" class="model-status status-loading">正在检查模型状态...</span>
+            </div>
+        </div>
+
+        <div class="two-column">
+            <div class="card">
+                <div class="card-title">📤 上传文档</div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">点击或拖拽图片到此处</div>
+                    <div class="upload-hint">支持 JPG、PNG、GIF 等格式，最大 16MB</div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+
+                <img id="previewImage" class="preview-image" style="display: none;" alt="预览">
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label">文档类型</label>
+                    <select class="form-select" id="docType">
+                        <option value="general">通用文档</option>
+                        <option value="contract">合同文档</option>
+                        <option value="bid">投标书</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="recognizeBtn" disabled>
+                    开始识别
+                </button>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>正在识别中，请稍候...</div>
+                    <div style="color: #999; font-size: 0.9em; margin-top: 10px;">
+                        首次识别可能需要较长时间加载模型
+                    </div>
+                </div>
+
+                <div class="status-message" id="statusMessage"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📝 识别结果</div>
+
+                <div class="result-container">
+                    <textarea class="result-text" id="resultText" placeholder="识别结果将显示在这里..."></textarea>
+                    <button class="copy-btn" id="copyBtn" style="display: none;">复制</button>
+                </div>
+
+                <div id="resultInfo" style="margin-top: 15px; display: none;">
+                    <div style="color: #666; font-size: 0.9em;">
+                        <strong>文档类型：</strong><span id="infoDocType">-</span><br>
+                        <strong>识别时间：</strong><span id="infoTime">-</span><br>
+                        <strong>字符数：</strong><span id="infoChars">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">📚 历史记录</div>
+            <div id="historyList" style="max-height: 300px; overflow-y: auto;">
+                <div style="text-align: center; color: #999; padding: 20px;">
+                    暂无历史记录
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewImage = document.getElementById('previewImage');
+        const recognizeBtn = document.getElementById('recognizeBtn');
+        const docType = document.getElementById('docType');
+        const loading = document.getElementById('loading');
+        const statusMessage = document.getElementById('statusMessage');
+        const resultText = document.getElementById('resultText');
+        const resultInfo = document.getElementById('resultInfo');
+        const infoDocType = document.getElementById('infoDocType');
+        const infoTime = document.getElementById('infoTime');
+        const infoChars = document.getElementById('infoChars');
+        const copyBtn = document.getElementById('copyBtn');
+        const historyList = document.getElementById('historyList');
+        const modelStatus = document.getElementById('modelStatus');
+
+        let selectedFile = null;
+
+        // 检查模型状态
+        async function checkModelStatus() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+
+                if (data.model_loaded) {
+                    modelStatus.textContent = '✓ 模型已就绪 (' + data.device + ')';
+                    modelStatus.className = 'model-status status-ready';
+                } else {
+                    modelStatus.textContent = '✗ 模型未加载';
+                    modelStatus.className = 'model-status status-error';
+                }
+            } catch (error) {
+                modelStatus.textContent = '✗ 服务异常';
+                modelStatus.className = 'model-status status-error';
+            }
+        }
+
+        // 上传区域事件
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#764ba2';
+            uploadArea.style.background = '#f0f2ff';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#667eea';
+            uploadArea.style.background = '#f8f9ff';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#667eea';
+            uploadArea.style.background = '#f8f9ff';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showStatus('请选择图片文件', 'error');
+                return;
+            }
+
+            if (file.size > 16 * 1024 * 1024) {
+                showStatus('文件大小不能超过 16MB', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+                uploadArea.style.display = 'none';
+                recognizeBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 识别按钮
+        recognizeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            recognizeBtn.disabled = true;
+            loading.style.display = 'block';
+            statusMessage.style.display = 'none';
+            resultText.value = '';
+            resultInfo.style.display = 'none';
+            copyBtn.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('doc_type', docType.value);
+
+            try {
+                const response = await fetch('/api/recognize', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    resultText.value = result.text;
+                    infoDocType.textContent = result.doc_type_name;
+                    infoTime.textContent = result.timestamp;
+                    infoChars.textContent = result.text.length;
+                    resultInfo.style.display = 'block';
+                    copyBtn.style.display = 'block';
+                    showStatus('✓ 识别成功！', 'success');
+                    loadHistory();
+                } else {
+                    showStatus('✗ 识别失败：' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showStatus('✗ 请求失败：' + error.message, 'error');
+            } finally {
+                recognizeBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        // 复制按钮
+        copyBtn.addEventListener('click', () => {
+            resultText.select();
+            document.execCommand('copy');
+            copyBtn.textContent = '已复制！';
+            setTimeout(() => {
+                copyBtn.textContent = '复制';
+            }, 2000);
+        });
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message status-' + type;
+            statusMessage.style.display = 'block';
+        }
+
+        // 加载历史记录
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+
+                if (data.success && data.history.length > 0) {
+                    historyList.innerHTML = data.history.map(item => `
+                        <div style="padding: 15px; border-bottom: 1px solid #eee;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 600;">${item.filename}</span>
+                                <span style="font-size: 0.85em; color: #999;">${item.timestamp}</span>
+                            </div>
+                            <div style="font-size: 0.9em; color: #666;">
+                                <span style="background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 4px; margin-right: 10px;">${item.doc_type_name}</span>
+                                <span style="color: ${item.success ? '#388e3c' : '#d32f2f'}">${item.success ? '成功' : '失败'}</span>
+                            </div>
+                            <div style="margin-top: 8px; color: #666; font-size: 0.9em;">
+                                ${item.text_preview}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    historyList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无历史记录</div>';
+                }
+            } catch (error) {
+                console.error('加载历史记录失败:', error);
+            }
+        }
+
+        // 初始化
+        checkModelStatus();
+        loadHistory();
+
+        // 每30秒刷新一次模型状态
+        setInterval(checkModelStatus, 30000);
+    </script>
+</body>
+</html>

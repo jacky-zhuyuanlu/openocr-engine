@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR 文档识别系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .preview-area {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-area {
+            margin-top: 20px;
+        }
+
+        .result-text {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            resize: vertical;
+            background: #f9f9f9;
+        }
+
+        .result-meta {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f2ff;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .history-section {
+            margin-top: 30px;
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .history-item:hover {
+            background: #f8f9ff;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .history-filename {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .history-time {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        .history-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .history-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .tag-contract {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .tag-bid {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .tag-general {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .tag-success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .tag-failed {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .status-success {
+            background: #e8f5e9;
+            color: #388e3c;
+            border: 1px solid #c8e6c9;
+        }
+
+        .status-error {
+            background: #ffebee;
+            color: #d32f2f;
+            border: 1px solid #ffcdd2;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #764ba2;
+        }
+
+        .result-container {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 OCR 文档识别系统</h1>
+            <p>基于 DeepSeek-OCR 和百度OCR 的智能文档识别</p>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>📤 上传文档</span>
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">点击或拖拽图片到此处</div>
+                    <div class="upload-hint">支持 JPG、PNG、GIF 等格式，最大 16MB</div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+
+                <div class="preview-area" id="previewArea">
+                    <img id="previewImage" class="preview-image" alt="预览图片">
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label">文档类型</label>
+                    <select class="form-select" id="docType">
+                        <option value="general">通用文档</option>
+                        <option value="contract">合同文档</option>
+                        <option value="bid">投标书</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">识别引擎</label>
+                    <select class="form-select" id="engine">
+                        <option value="auto">自动选择</option>
+                        <option value="baidu">百度OCR（快速）</option>
+                        <option value="deepseek">DeepSeek-OCR（高质量）</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="recognizeBtn" disabled>
+                    开始识别
+                </button>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>正在识别中，请稍候...</div>
+                </div>
+
+                <div class="status-message" id="statusMessage"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>📝 识别结果</span>
+                </div>
+
+                <div class="result-container">
+                    <textarea class="result-text" id="resultText" placeholder="识别结果将显示在这里..."></textarea>
+                    <button class="copy-btn" id="copyBtn" style="display: none;">复制</button>
+                </div>
+
+                <div class="result-meta" id="resultMeta" style="display: none;">
+                    <div><strong>引擎：</strong><span id="metaEngine">-</span></div>
+                    <div><strong>时间：</strong><span id="metaTime">-</span></div>
+                    <div><strong>字符数：</strong><span id="metaChars">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card history-section">
+            <div class="card-title">
+                <span>📚 历史记录</span>
+            </div>
+            <div class="history-list" id="historyList">
+                <div style="text-align: center; color: #999; padding: 20px;">
+                    暂无历史记录
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewArea = document.getElementById('previewArea');
+        const previewImage = document.getElementById('previewImage');
+        const recognizeBtn = document.getElementById('recognizeBtn');
+        const docType = document.getElementById('docType');
+        const engine = document.getElementById('engine');
+        const loading = document.getElementById('loading');
+        const statusMessage = document.getElementById('statusMessage');
+        const resultText = document.getElementById('resultText');
+        const resultMeta = document.getElementById('resultMeta');
+        const metaEngine = document.getElementById('metaEngine');
+        const metaTime = document.getElementById('metaTime');
+        const metaChars = document.getElementById('metaChars');
+        const copyBtn = document.getElementById('copyBtn');
+        const historyList = document.getElementById('historyList');
+
+        let selectedFile = null;
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showStatus('请选择图片文件', 'error');
+                return;
+            }
+
+            if (file.size > 16 * 1024 * 1024) {
+                showStatus('文件大小不能超过 16MB', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewArea.style.display = 'block';
+                uploadArea.style.display = 'none';
+                recognizeBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        recognizeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            recognizeBtn.disabled = true;
+            loading.style.display = 'block';
+            statusMessage.style.display = 'none';
+            resultText.value = '';
+            resultMeta.style.display = 'none';
+            copyBtn.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('doc_type', docType.value);
+            formData.append('engine', engine.value);
+
+            try {
+                const response = await fetch('/api/recognize', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    resultText.value = result.text;
+                    metaEngine.textContent = result.engine;
+                    metaTime.textContent = result.timestamp;
+                    metaChars.textContent = result.text.length;
+                    resultMeta.style.display = 'block';
+                    copyBtn.style.display = 'block';
+                    showStatus('识别成功！', 'success');
+                    loadHistory();
+                } else {
+                    showStatus('识别失败：' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showStatus('请求失败：' + error.message, 'error');
+            } finally {
+                recognizeBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            resultText.select();
+            document.execCommand('copy');
+            copyBtn.textContent = '已复制！';
+            setTimeout(() => {
+                copyBtn.textContent = '复制';
+            }, 2000);
+        });
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message status-' + type;
+            statusMessage.style.display = 'block';
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+
+                if (data.success && data.history.length > 0) {
+                    historyList.innerHTML = data.history.map(item => `
+                        <div class="history-item">
+                            <div class="history-header">
+                                <span class="history-filename">${item.filename}</span>
+                                <span class="history-time">${item.timestamp}</span>
+                            </div>
+                            <div class="history-meta">
+                                <span class="history-tag tag-${item.doc_type}">${getDocTypeName(item.doc_type)}</span>
+                                <span class="history-tag tag-${item.success ? 'success' : 'failed'}">${item.success ? '成功' : '失败'}</span>
+                                <span>引擎：${item.engine}</span>
+                            </div>
+                            <div style="margin-top: 8px; color: #666; font-size: 0.9em;">
+                                ${item.text_preview}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    historyList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无历史记录</div>';
+                }
+            } catch (error) {
+                console.error('加载历史记录失败:', error);
+            }
+        }
+
+        function getDocTypeName(type) {
+            const names = {
+                'contract': '合同',
+                'bid': '投标书',
+                'general': '通用'
+            };
+            return names[type] || type;
+        }
+
+        loadHistory();
+    </script>
+</body>
+</html>
